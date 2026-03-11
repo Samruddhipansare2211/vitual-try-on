@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Virtual Try-On</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gradient-to-r from-indigo-900 via-purple-900 to-pink-900 min-h-screen text-white">
+
+<!-- NAVBAR -->
+<nav class="flex justify-between items-center px-10 py-4 bg-black/40 backdrop-blur-lg">
+  <h1 class="text-3xl font-bold tracking-wide">AI Virtual Try-On</h1>
+  
+</nav>
+
+<!-- HERO -->
+<section class="text-center py-12 px-6">
+  <h1 class="text-5xl font-bold mb-4">Virtual Clothing Assistant</h1>
+  <p class="text-lg text-gray-200">Upload photos or use your camera to try 3–4 outfits in real-time.</p>
+</section>
+
+<!-- UPLOAD & CAMERA SECTION -->
+<div class="max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-10">
+
+  <!-- UPLOAD SECTION -->
+  <div class="bg-white/10 backdrop-blur-lg p-8 rounded-2xl shadow-xl">
+    <h2 class="text-2xl font-semibold mb-6 text-center">Upload Images</h2>
+    <form id="uploadForm" action="/preds" method="POST" enctype="multipart/form-data">
+      <div class="mb-6">
+        <label class="block mb-2 font-medium">Cloth Images (Select 3–4)</label>
+        <input type="file" name="cloth" id="cloth" multiple required class="w-full bg-white text-black p-2 rounded-md">
+      </div>
+      <div class="mb-6">
+        <label class="block mb-2 font-medium">Model Image</label>
+        <input type="file" name="model" id="model" required class="w-full bg-white text-black p-2 rounded-md">
+      </div>
+      <button type="submit" class="w-full bg-pink-500 hover:bg-pink-600 transition py-3 rounded-lg font-semibold">Try Outfit</button>
+    </form>
+    <div class="flex justify-between mt-4">
+      <button id="prevCloth" class="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg font-semibold">Previous</button>
+      <button id="nextCloth" class="bg-green-500 hover:bg-green-600 px-4 py-2 rounded-lg font-semibold">Next</button>
+    </div>
+  </div>
+
+  <!-- CAMERA SECTION -->
+  <div class="bg-white/10 backdrop-blur-lg p-8 rounded-2xl shadow-xl">
+    <h2 class="text-2xl font-semibold mb-6 text-center">Camera Try-On</h2>
+    <div class="flex flex-col items-center">
+      <video id="camera" width="350" autoplay playsinline class="rounded-lg shadow-lg border border-white/20"></video>
+      <div class="flex gap-4 mt-6">
+        <button onclick="startCamera()" class="bg-green-500 hover:bg-green-600 px-6 py-3 rounded-lg font-semibold transition">Start Camera</button>
+        <button onclick="capturePhoto()" class="bg-blue-500 hover:bg-blue-600 px-6 py-3 rounded-lg font-semibold transition">Capture</button>
+      </div>
+      <canvas id="canvas" style="display:none;"></canvas>
+    </div>
+    <div class="flex justify-between mt-4">
+      <button id="prevClothCam" class="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg font-semibold">Previous</button>
+      <button id="nextClothCam" class="bg-green-500 hover:bg-green-600 px-4 py-2 rounded-lg font-semibold">Next</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- RESULTS SECTION: IMAGE + CAMERA SIDE BY SIDE -->
+{% if op_list %}
+<div class="mt-16 max-w-6xl mx-auto px-6">
+  <h2 class="text-3xl font-semibold mb-6 text-center">Try-On Results</h2>
+  <div class="grid md:grid-cols-2 gap-10 items-start justify-center">
+
+    <!-- IMAGE UPLOAD RESULT -->
+    <div class="text-center">
+      <h3 class="text-2xl font-semibold mb-4">Image Upload Result</h3>
+      <img id="uploadResult" src="data:image/png;base64,{{ op_list[0] }}" class="mx-auto rounded-xl shadow-2xl max-w-md">
+    </div>
+
+    <!-- CAMERA RESULT -->
+    <div class="text-center">
+      <h3 class="text-2xl font-semibold mb-4">Camera Result</h3>
+      <img id="cameraResult" class="mx-auto rounded-xl shadow-2xl max-w-md">
+    </div>
+
+  </div>
+</div>
+{% endif %}
+
+<!-- FEATURES SECTION -->
+<section class="mt-20 text-center px-6">
+  <h2 class="text-4xl font-bold mb-10">Why Use Our AI Try-On?</h2>
+  <div class="grid md:grid-cols-3 gap-10 max-w-6xl mx-auto">
+
+    <div class="bg-white/10 p-6 rounded-xl">
+      <h3 class="text-xl font-semibold mb-3">AI Body Detection</h3>
+      <p class="text-gray-300">Advanced AI detects body posture and aligns clothing accurately.</p>
+    </div>
+
+    <div class="bg-white/10 p-6 rounded-xl">
+      <h3 class="text-xl font-semibold mb-3">Camera Try-On</h3>
+      <p class="text-gray-300">Try clothes instantly using your webcam.</p>
+    </div>
+
+    <div class="bg-white/10 p-6 rounded-xl">
+      <h3 class="text-xl font-semibold mb-3">Instant Results</h3>
+      <p class="text-gray-300">Upload and see results in seconds.</p>
+    </div>
+
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="mt-20 bg-black/40 py-6 text-center">
+  <p class="text-gray-300">© 2026 AI Virtual Try-On | All Rights Reserved</p>
+</footer>
+
+<script>
+let currentIndex = 0;
+let opList = {{ op_list|default('[]')|safe }};
+let lastCameraImage = null;
+
+function startCamera(){
+  navigator.mediaDevices.getUserMedia({video:true})
+  .then(stream => { document.getElementById("camera").srcObject = stream })
+  .catch(err => { alert("Camera access denied") });
+}
+
+function capturePhoto(){
+  if(opList.length === 0){
+    alert("Upload cloth first");
+    return;
+  }
+  let video = document.getElementById("camera")
+  let canvas = document.getElementById("canvas")
+  canvas.width = video.videoWidth
+  canvas.height = video.videoHeight
+  let ctx = canvas.getContext("2d")
+  ctx.drawImage(video,0,0)
+  lastCameraImage = canvas.toDataURL("image/png")
+  applyClothToCamera(lastCameraImage, currentIndex)
+}
+
+function applyClothToCamera(imageData, index){
+  fetch("/camera_tryon",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({image:imageData, index:index})
+  })
+  .then(res=>res.json())
+  .then(data=>{
+    document.getElementById("cameraResult").src = "data:image/png;base64," + data.image
+  })
+}
+
+function switchCloth(offset){
+  if(opList.length === 0) return;
+  currentIndex = (currentIndex + offset + opList.length) % opList.length;
+  document.getElementById("uploadResult").src = "data:image/png;base64," + opList[currentIndex];
+  if(lastCameraImage){
+    applyClothToCamera(lastCameraImage, currentIndex)
+  }
+}
+
+document.getElementById("prevCloth").onclick = ()=>switchCloth(-1);
+document.getElementById("nextCloth").onclick = ()=>switchCloth(1);
+document.getElementById("prevClothCam").onclick = ()=>switchCloth(-1);
+document.getElementById("nextClothCam").onclick = ()=>switchCloth(1);
+</script>
+
+</body>
+</html>
