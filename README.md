@@ -144,7 +144,7 @@ http://127.0.0.1:5000
 | ------------------------------------------------- | ------------------------------------------------- |
 | ![Upload Result](Project Screenshot/Screenshot_upload.png) | ![Camera Result](Project Screenshot/Screenshot_camera.png) |
 
-🎥 **Demo Video:** [assets/demo_video.mp4](assets/demo_video.mp4)
+🎥 **Demo Video:** [demo_virtual_try_on.mp4](demo_virtual_try_on.mp4)
 
 ---
 
